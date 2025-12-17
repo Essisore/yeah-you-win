@@ -4,30 +4,66 @@ import { SITE_DESCRIPTION, SITE_TITLE } from "../../consts";
 import Layout from "../../layouts/Layout.astro";
 import { formatDate } from "../../lib/utils";
 
-const collection = await getCollection("posts");
-const posts = collection.sort(
-  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
-);
+const allPosts = await getCollection("posts");
+
+// 过滤草稿并按日期排序
+const posts = allPosts
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const pageTitle = `文章列表 - ${SITE_TITLE}`;
 ---
 
-<Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
-  <main>
-    <ul class="flex flex-col gap-1.5">
-      {
-        posts.map((post) => (
-          <li>
-            <a
-              href={`/posts/${post.slug}`}
-              class="group flex justify-between gap-3"
-            >
-              <span class="group-hover:underline">{post.data.title}</span>
-              <span class="text-nowrap font-mono text-xs text-zinc-500">
-                {formatDate(post.data.date)}
-              </span>
-            </a>
-          </li>
-        ))
-      }
-    </ul>
+<Layout
+  title={pageTitle}
+  description={SITE_DESCRIPTION}
+  containerClass="max-w-7xl"
+  className="!p-0"
+>
+  <main class="flex justify-center lg:my-6">
+    <article
+      class="w-full max-w-[210mm] bg-white shadow-2xl dark:bg-zinc-900"
+      style="min-height: 297mm;"
+    >
+      <div class="h-full overflow-auto p-6">
+        <header class="mb-6">
+          <h1 class="text-xl font-semibold">文章列表</h1>
+          <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            共 {posts.length} 篇文章
+          </p>
+        </header>
+
+        {
+          posts.length === 0 ? (
+            <p class="text-sm text-zinc-500">暂无文章</p>
+          ) : (
+            <ul class="m-0 flex list-none flex-col p-0 text-sm" role="list">
+              {posts.map((post) => (
+                <li class="m-0 list-none p-0">
+                  <a
+                    href={`/posts/${post.slug}`}
+                    class="group flex flex-col gap-1 py-2 no-underline transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800 sm:flex-row sm:justify-between sm:gap-2"
+                  >
+                    <span class="font-medium group-hover:text-blue-500">
+                      {post.data.title}
+                    </span>
+                    <span class="whitespace-nowrap font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                      {formatDate(post.data.date)}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </div>
+    </article>
   </main>
 </Layout>
+
+<style>
+  /* 覆盖全局 article a 的下划线样式 */
+  article a {
+    text-decoration: none;
+  }
+</style>

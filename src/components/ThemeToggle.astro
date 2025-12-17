@@ -1,9 +1,10 @@
 <button
   id="theme-toggle"
+  type="button"
   class="inline-flex items-center rounded-md border p-1 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800 [&_svg]:text-zinc-500 [&_svg]:hover:text-zinc-900 [&_svg]:dark:hover:text-zinc-100"
-  aria-label="Toggle theme"
+  aria-label="切换主题"
 >
-  <span class="sr-only">Toggle theme</span>
+  <span class="sr-only">切换主题</span>
   <svg
     id="sun"
     xmlns="http://www.w3.org/2000/svg"
@@ -29,15 +30,20 @@
 </button>
 
 <script>
-  const setListener = () => {
+  function setListener() {
     const button = document.getElementById("theme-toggle");
+    if (!button) return;
 
-    button?.addEventListener("click", () => {
-      document.documentElement.classList.toggle("dark");
-    });
-  };
+    const handleClick = () => {
+      const isDark = document.documentElement.classList.toggle("dark");
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+      }
+    };
+
+    button.addEventListener("click", handleClick);
+  }
 
   setListener();
-
   document.addEventListener("astro:after-swap", setListener);
 </script>

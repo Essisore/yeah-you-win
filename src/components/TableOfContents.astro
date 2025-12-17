@@ -7,51 +7,83 @@ interface Heading {
   text: string;
 }
 
-const { headings = [] } = Astro.props as { headings: Heading[] };
-const items = headings.filter((heading) => heading.depth >= 1 && heading.depth <= 3);
+interface Props {
+  headings?: Heading[];
+}
+
+const { headings = [] } = Astro.props;
+const items = headings.filter(
+  (heading) => heading.depth >= 1 && heading.depth <= 3,
+);
 ---
 
-{items.length > 0 && (
-  <nav class="sticky top-1/2 -translate-y-1/2 hidden w-64 flex-shrink-0 self-start lg:block">
-    <div class="rounded-lg bg-white/50 p-4 backdrop-blur-sm dark:bg-zinc-900/50">
-      <div class="mb-4 flex items-center gap-2">
-        <svg class="h-4 w-4 text-zinc-500 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-        </svg>
-        <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">目录</p>
+{
+  items.length > 0 && (
+    <nav
+      class="sticky top-1/2 hidden w-56 flex-shrink-0 self-start lg:block"
+      style="transform: translateY(-50%);"
+      aria-label="目录导航"
+    >
+      <div class="rounded-lg bg-white/50 p-3 backdrop-blur-sm dark:bg-zinc-900/50">
+        <div class="mb-3 flex items-center gap-1.5">
+          <svg
+            class="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h7"
+            />
+          </svg>
+          <p class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+            目录
+          </p>
+        </div>
+        <ul class="space-y-0 text-xs leading-relaxed" id="toc-list">
+          {items.map((heading) => (
+            <li>
+              <a
+                href={`#${heading.slug}`}
+                data-toc-link={heading.slug}
+                class={cn(
+                  "group relative block rounded-md px-2.5 py-1.5 text-zinc-600 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
+                  heading.depth === 2 && "pl-5",
+                  heading.depth >= 3 && "pl-7 text-[0.7rem]",
+                )}
+              >
+                <span
+                  class={cn(
+                    "absolute left-0 top-1/2 h-3 w-0.5 -translate-y-1/2 rounded-full bg-blue-500 opacity-0 transition-opacity group-hover:opacity-100",
+                    heading.depth === 2 && "left-2.5",
+                    heading.depth >= 3 && "left-5",
+                  )}
+                  aria-hidden="true"
+                />
+                {heading.text}
+              </a>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul class="space-y-0.5 text-sm leading-relaxed" id="toc-list">
-        {items.map((heading) => (
-          <li>
-            <a
-              href={`#${heading.slug}`}
-              data-toc-link={heading.slug}
-              class={cn(
-                "group relative block rounded-md px-3 py-2 text-zinc-600 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
-                heading.depth === 2 && "pl-6",
-                heading.depth >= 3 && "pl-9 text-xs",
-              )}
-            >
-              <span class={cn(
-                "absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-blue-500 opacity-0 transition-opacity group-hover:opacity-100",
-                heading.depth === 2 && "left-3",
-                heading.depth >= 3 && "left-6",
-              )}></span>
-              {heading.text}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  </nav>
-)}
+    </nav>
+  )
+}
 
 <script>
   function initTableOfContents() {
-    const tocLinks = document.querySelectorAll('[data-toc-link]');
+    const tocLinks = document.querySelectorAll("[data-toc-link]");
     if (tocLinks.length === 0) return;
 
-    const headings = Array.from(document.querySelectorAll('article h1[id], article h2[id], article h3[id]'));
+    const headings = Array.from(
+      document.querySelectorAll(
+        "article h1[id], article h2[id], article h3[id]",
+      ),
+    );
     if (headings.length === 0) return;
 
     let activeId: string | null = null;
@@ -66,36 +98,49 @@ const items = headings.filter((heading) => heading.depth >= 1 && heading.depth <
         });
       },
       {
-        rootMargin: '-100px 0px -66%',
+        rootMargin: "-100px 0px -66%",
         threshold: 0,
-      }
+      },
     );
 
     headings.forEach((heading) => observer.observe(heading));
 
     function updateActiveLink() {
       tocLinks.forEach((link) => {
-        const slug = link.getAttribute('data-toc-link');
-        const indicator = link.querySelector('span');
-        
+        const slug = link.getAttribute("data-toc-link");
+        const indicator = link.querySelector("span");
+
         if (slug === activeId) {
-          link.classList.add('!text-blue-600', 'dark:!text-blue-400', '!bg-blue-50', 'dark:!bg-blue-950/30');
+          link.classList.add(
+            "!text-blue-600",
+            "dark:!text-blue-400",
+            "!bg-blue-50",
+            "dark:!bg-blue-950/30",
+          );
           if (indicator) {
-            indicator.classList.add('!opacity-100');
+            indicator.classList.add("!opacity-100");
           }
         } else {
-          link.classList.remove('!text-blue-600', 'dark:!text-blue-400', '!bg-blue-50', 'dark:!bg-blue-950/30');
+          link.classList.remove(
+            "!text-blue-600",
+            "dark:!text-blue-400",
+            "!bg-blue-50",
+            "dark:!bg-blue-950/30",
+          );
           if (indicator) {
-            indicator.classList.remove('!opacity-100');
+            indicator.classList.remove("!opacity-100");
           }
         }
       });
     }
+
+    // 初始高亮
+    updateActiveLink();
   }
 
   // 初始化
   initTableOfContents();
 
   // 支持 Astro 页面切换
-  document.addEventListener('astro:page-load', initTableOfContents);
+  document.addEventListener("astro:page-load", initTableOfContents);
 </script>

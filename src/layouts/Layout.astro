@@ -1,6 +1,6 @@
 ---
-import { ClientRouter } from "astro:transitions";
 import Header from "../components/Header.astro";
+import { AUTHOR, SITE_CONFIG, SITE_TITLE } from "../consts";
 import { cn } from "../lib/utils";
 import "../styles/global.css";
 
@@ -10,6 +10,7 @@ interface Props {
   image?: string;
   className?: string;
   containerClass?: string;
+  article?: boolean;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -17,13 +18,17 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const {
   title,
   description,
-  image = "/static/blog-placeholder.png",
+  image = SITE_CONFIG.defaultImage,
   className,
   containerClass,
+  article = false,
 } = Astro.props;
+
+const imageUrl = new URL(image, Astro.site).toString();
 ---
 
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
   <head>
     <!-- Global Metadata -->
     <meta charset="utf-8" />
@@ -31,24 +36,40 @@ const {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- Font preloads -->
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+
+    <!-- Google Fonts with optimized loading -->
     <link
       rel="preload"
-      href="/fonts/geist-variable.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
     />
     <link
-      rel="preload"
-      href="/fonts/geist-mono-variable.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.onload=null;this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
 
     <!-- Canonical URL -->
     <link rel="canonical" href={canonicalURL} />
+
+    <!-- RSS Feed -->
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="RSS"
+      href={new URL("/rss.xml", Astro.site)}
+    />
 
     <!-- KaTeX CSS -->
     <link
@@ -64,58 +85,78 @@ const {
     <meta name="description" content={description} />
 
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content={Astro.url} />
+    <meta property="og:type" content={article ? "article" : "website"} />
+    <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={new URL(image, Astro.url)} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:site_name" content={SITE_TITLE} />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content={Astro.url} />
-    <meta property="twitter:title" content={title} />
-    <meta property="twitter:description" content={description} />
-    <meta property="twitter:image" content={new URL(image, Astro.url)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={canonicalURL} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
 
-    <ClientRouter />
+    <!-- Additional SEO -->
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content={AUTHOR.name} />
+    <meta
+      name="theme-color"
+      content="#ffffff"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#18181b"
+      media="(prefers-color-scheme: dark)"
+    />
   </head>
   <body
-    class="font-sans text-zinc-900 antialiased transition-colors dark:bg-zinc-900 dark:text-zinc-200"
+    class="min-h-screen font-sans text-zinc-900 antialiased transition-colors dark:bg-zinc-900 dark:text-zinc-200"
   >
+    <Header />
     <div class={cn("mx-auto p-4", containerClass ?? "max-w-2xl", className)}>
-      <Header />
       <slot />
     </div>
   </body>
 </html>
 
 <script is:inline>
-  const setTheme = () => {
-    let theme;
-
-    if (typeof localStorage !== "undefined" && localStorage.getItem("theme")) {
-      theme = localStorage.getItem("theme");
-    } else {
-      theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+  function initTheme() {
+    const getTheme = () => {
+      if (typeof localStorage !== "undefined") {
+        const stored = localStorage.getItem("theme");
+        if (stored) return stored;
+      }
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
-    }
+    };
 
-    document.documentElement.classList[theme ? "add" : "remove"](theme);
+    const setTheme = (theme) => {
+      const isDark = theme === "dark";
+      document.documentElement.classList.toggle("dark", isDark);
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("theme", theme);
+      }
+    };
 
-    if (typeof localStorage !== "undefined") {
-      const observer = new MutationObserver(() => {
-        const isDark = document.documentElement.classList.contains("dark");
-        localStorage.setItem("theme", isDark ? "dark" : "light");
-      });
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["class"],
-      });
-    }
-  };
+    const theme = getTheme();
+    setTheme(theme);
 
-  setTheme();
+    // 监听系统主题变化
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e) => {
+      if (!localStorage.getItem("theme")) {
+        setTheme(e.matches ? "dark" : "light");
+      }
+    };
 
-  document.addEventListener("astro:after-swap", setTheme);
+    mediaQuery.addEventListener("change", handleChange);
+  }
+
+  initTheme();
+  document.addEventListener("astro:after-swap", initTheme);
 </script>

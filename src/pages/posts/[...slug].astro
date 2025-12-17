@@ -1,47 +1,100 @@
 ---
 import { type CollectionEntry, getCollection } from "astro:content";
 import CodeCopyButton from "../../components/CodeCopyButton.astro";
+import HeadingLinks from "../../components/HeadingLinks.astro";
 import ImageViewer from "../../components/ImageViewer.astro";
+import ScrollProgress from "../../components/ScrollProgress.astro";
 import TableOfContents from "../../components/TableOfContents.astro";
+import { SITE_TITLE } from "../../consts";
 import Layout from "../../layouts/Layout.astro";
 import { formatDate } from "../../lib/utils";
 
 export async function getStaticPaths() {
   const posts = await getCollection("posts");
-  return posts.map((post) => ({
+  // 过滤草稿
+  const publishedPosts = posts.filter((post) => !post.data.draft);
+  return publishedPosts.map((post) => ({
     params: { slug: post.slug },
     props: post,
   }));
 }
+
 type Props = CollectionEntry<"posts">;
 
 const post = Astro.props;
 const { Content, headings } = await post.render();
+
+const pageTitle = `${post.data.title} - ${SITE_TITLE}`;
 ---
 
 <Layout
-  title={post.data.title}
+  title={pageTitle}
   description={post.data.description}
   image={post.data.image}
   containerClass="max-w-7xl"
   className="!p-0"
+  article={true}
 >
-  <main class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-center lg:gap-12">
+  <main
+    class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-8"
+  >
     <TableOfContents headings={headings} />
-    <div class="w-full max-w-[210mm] flex-shrink-0 bg-white shadow-2xl dark:bg-zinc-900 lg:my-8">
-      <div class="p-8">
-        <h1 class="mb-3 text-xl font-medium">
-          {post.data.title}
-        </h1>
-        <p class="mb-1 font-mono font-medium text-zinc-500">
-          {formatDate(post.data.date)}
-        </p>
-        <article class="mt-4">
+    <article
+      class="w-full max-w-[210mm] flex-shrink-0 bg-white shadow-2xl dark:bg-zinc-900 lg:my-6"
+      itemscope
+      itemtype="https://schema.org/BlogPosting"
+    >
+      <div class="p-6">
+        <header class="border-b border-zinc-200 pb-4 dark:border-zinc-700">
+          <h1
+            class="mb-2 text-xl font-semibold"
+            itemprop="headline"
+            transition:name={`title-${post.slug}`}
+          >
+            {post.data.title}
+          </h1>
+          <div
+            class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-zinc-600 dark:text-zinc-400"
+          >
+            <time
+              datetime={post.data.date.toISOString()}
+              itemprop="datePublished"
+            >
+              {formatDate(post.data.date)}
+            </time>
+            {
+              post.data.author && (
+                <span
+                  itemprop="author"
+                  itemscope
+                  itemtype="https://schema.org/Person"
+                >
+                  · <span itemprop="name">{post.data.author}</span>
+                </span>
+              )
+            }
+          </div>
+          {
+            post.data.tags && post.data.tags.length > 0 && (
+              <div class="mt-3 flex flex-wrap gap-2">
+                {post.data.tags.map((tag) => (
+                  <span class="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )
+          }
+        </header>
+
+        <div class="prose-custom mt-6" itemprop="articleBody">
           <Content />
-        </article>
+        </div>
       </div>
-    </div>
+    </article>
   </main>
   <CodeCopyButton />
   <ImageViewer />
+  <ScrollProgress />
+  <HeadingLinks />
 </Layout>

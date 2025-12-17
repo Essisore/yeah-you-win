@@ -13,13 +13,13 @@ date: "Dec 03 2025"
 ![mariadb 向量索引概览](/assets/images/maria-vector-index-glance.jpg)
 
 通过这幅图，可以清楚的看出来：
+
 1. 向量索引保存在一张内部表中，姑且称为“向量索引表”
 2. 向量保存了两份，一份在用户表中，一份保存在向量索引表中
 3. 向量采用二进制的形式保存
-3. 向量索引表中保存的向量经过了量化，每一个向量维度使用 int16 保存，也就是 2字节
-4. 向量所有层的邻居都保存在 neighbors 字段中
-5. neighbors 字段保存的是邻居 id，即 `DB_ROW_ID`
-
+4. 向量索引表中保存的向量经过了量化，每一个向量维度使用 int16 保存，也就是 2字节
+5. 向量所有层的邻居都保存在 neighbors 字段中
+6. neighbors 字段保存的是邻居 id，即 `DB_ROW_ID`
 
 向量索引表的建表语句定义在 `mhnsw_hlindex_table_def` 函数中，如下所示：
 
@@ -42,6 +42,7 @@ mariadb 的向量索引基于 hnsw 算法，并做了修改。关于 hnsw 可以
 hnsw 是比较高效的向量索引数据结构，也是目前应用最广泛的 ann 算法。
 
 但它有几个问题：
+
 1. 纯内存的数据结构，必须全部加载到内存中才能使用
 2. 随机读，访问某个节点的邻居是随机读，是实现磁盘算法的一大挑战
 3. 写放大，当插入向量时，不仅要修改该节点，还要更新其邻居节点的连接信息。这些节点可能分散在磁盘各处，导致大量的小规模随机写入，远比顺序写入效率低
@@ -93,7 +94,6 @@ udt_name float_options srid_option
 duckdb array 类型实现：duckdb 的 array 实现逻辑和 c++ 中的二维数组的思路是一致的，即：数据实际上是保存在一维数组中（连续空间），在逻辑上做切分，对用户表现为二维。
 在 mysql 中能否也参考这种思想，即: 将 vector 类型扩展成多个 float 列，可不可行？
 
-
 ### 索引创建流程
 
 mariadb 引入了 “high level index”（hlindex）机制，来支持创建向量索引。所谓的 hlindex 是指：sql 层索引，非引擎层索引。目前，mariadb 中只支持一种 hlindex：向量索引。
@@ -118,21 +118,22 @@ ha_create_table {
         1. init_tmp_table_share // 初始化临时 index_share
         2. mhnsw_hlindex_table_def // 取回建表语句
         // 用建表语句初始化 index_share
-        3. index_share.init_from_sql_statement_string 
+        3. index_share.init_from_sql_statement_string
         4. ha_create_table_from_share // 创建临时表
     }
 }
 ```
 
 #### 索引参数
+
 mariadb 向量索引实现相关参数：
 
-| 参数                     | 默认值       | 范围                | 说明           |
-|------------------------|-----------|-------------------|--------------|
-| mhnsw_max_cache_size   | 16MB      | [1MB, SIZE_T_MAX] | 单个索引缓存上限     |
-| mhnsw_ef_search        | 20        | [1, 10000]        | 查询时探索的候选节点数  |
-| mhnsw_default_m        | 6         | [3, 200]          | 创建索引时的默认 M 值 |
-| mhnsw_default_distance | EUCLIDEAN | EUCLIDEAN/COSINE  | 默认距离度量       |
+| 参数                   | 默认值    | 范围              | 说明                   |
+| ---------------------- | --------- | ----------------- | ---------------------- |
+| mhnsw_max_cache_size   | 16MB      | [1MB, SIZE_T_MAX] | 单个索引缓存上限       |
+| mhnsw_ef_search        | 20        | [1, 10000]        | 查询时探索的候选节点数 |
+| mhnsw_default_m        | 6         | [3, 200]          | 创建索引时的默认 M 值  |
+| mhnsw_default_distance | EUCLIDEAN | EUCLIDEAN/COSINE  | 默认距离度量           |
 
 ### 插入
 
@@ -189,6 +190,7 @@ mysql_insert
 ![FVectorNode 内存布局](/assets/images/maria-mhnsw-fvector-mem.svg)
 
 gref 和 tref 的内存是不属于 FVector 的，它们紧跟在 FVector 的后面：
+
 - gref 保存向量索引表的主键 DB_ROW_ID，可以理解为是节点的唯一编号
 - tref 保存的是主表的主键，用于回表
 
@@ -199,7 +201,7 @@ neighbors 指向一块连续的内存：前面是 `max_layer + 1` 个 `Neighborh
 
 ```c++
 // 把数值 A 向上对齐到 L 的倍数（L 必须是 2 的幂）
-#define MY_ALIGN(A,L)	   (((A) + (L) - 1) & ~((L) - 1)) 
+#define MY_ALIGN(A,L)	   (((A) + (L) - 1) & ~((L) - 1))
 void *alloc_neighborhood(size_t max_layer)
 {
   mysql_mutex_lock(&cache_lock);
@@ -248,6 +250,7 @@ Q：插入重复向量是怎么处理的
 一种是 truncate，直接调用 `mhsnw_delete_all` 清空向量索引表；另一种是 delete row，采用标记删除。
 
 流程如下：
+
 ```c++
 ha_delete_row -> mhnsw_invalidate
 ha_truncate -> hlindexes_on_delete_all -> mhnsw_delete_all
@@ -265,16 +268,15 @@ ha_update_row -> hlindexes_on_update --> mhnsw_invalidate
 ```
 
 `mhnsw_invalidate` 主要做了两件事
+
 1. 根据待删除的向量，找到向量索引表的行，然后将向量索引表的 tref 字段置为 null
 2. 将 FVectorNode 的 delete 字段置为 true
 
 通过将 tref 字段置为 null，可以保证在搜索结果中不会出现被删除的节点；另外一方面，虽然用户删除某个节点，我们依然可以使用被删除的节点作为路由，进行搜索。
 
-
 Q：那么什么时候真正地删除？
 
 TODO（P.S. 目前的理解是不删除）
-
 
 ### 查询
 
@@ -297,7 +299,6 @@ LIMIT 10
 这是因为在 `test_if_cheaper_ordering` 函数中，会遍历所有的 order 子句能够使用的索引，并比较使用索引和 file sort 的代价，如果使用索引的代价更低，则会使用索引。
 这个过程中要求索引是聚簇索引，或者有 limit 子句。而计算代价（`cost_for_index_read`）流程并没针对 hlindex 做什么特殊处理。
 
-
 #### 查询流程
 
 ```c++
@@ -306,10 +307,11 @@ sub_select --> join_read_first -> hlindex_read_first -> mhnsw_read_first
 ```
 
 查询分为两个接口：
+
 - mhnsw_read_first
 - mhnsw_read_next
 
-在 `mhnsw_read_first` 中运行 hnsw search 算法，将结果以 `Search_context` 的形式保存在 `table->hlindex->context` 中，后续 next 根据 `Search_context` 回表取数据。 
+在 `mhnsw_read_first` 中运行 hnsw search 算法，将结果以 `Search_context` 的形式保存在 `table->hlindex->context` 中，后续 next 根据 `Search_context` 回表取数据。
 
 #### 缓存机制
 
@@ -330,7 +332,7 @@ mariadb 并没有很好的解决随机读的问题。使用了缓存机制，
 `thd->ha_data` 保存的最近写的表的 `MHNSW_Trx`。
 
 `MHNSW_Share` 是共享的算法上下文，保存 hnsw 的 entrypoint，
-缓存访问过的 hnsw 的节点。 `MHNSW_Share` 保存在 `TABLE_SHARE` 
+缓存访问过的 hnsw 的节点。 `MHNSW_Share` 保存在 `TABLE_SHARE`
 的 hlindex 成员变量中，是跨 session 共享的，如下所示：
 
 ```c++
@@ -342,11 +344,14 @@ struct TABLE_SHARE
   };
 }
 ```
+
 在 `TABLE_SHARE` 中添加了一个联合体：
+
 - 对于普通表，保存的是向量索引表
 - 对于向量索引表，保存的则是 `MHNSW_Share`
 
 `MHNSW_Trx` 是 `MHNSW_Share` 的子类，`MHNSW_Trx` 在 share 的基础上增加了事务的能力，实现了一系列相关接口，包含：
+
 - 提交：`do_commit`
 - 回滚：`do_savepoint_rollback`，`do_rollback`
 
@@ -357,7 +362,6 @@ struct TABLE_SHARE
 ![获取 MHNSW_Share 流程](/assets/images/maria-mhnsw-acquire.svg)
 
 从流程图中也可以看出，thd 中保存的 `MHNSW_Trx` 的优先级是高于 `TABLE_SHARE` 中保存的 `MHNSW_Share` 的。
-
 
 entrypoint 是 hnsw 的入口点，在 faiss 的实现逻辑中，是以成员变量的形式保存在内存中，当插入更高 layer 的节点后，更新 entrypoint。
 
@@ -400,13 +404,11 @@ node->load_from_record; // 读向量索引表，加载 entrypoint
 - 对于 rollback 语句，调用 `trans_rollback` 回滚事务
 - 对于 rollback to savepoint 语句，调用 `trans_rollback_to_savepoint` 回滚到指定 savepoint
 
-
 `MHNSW_Trx::do_commit`
 
 1. 会加提交锁（`commit_lock`），防止读写冲突
-2. 操作事务涉及到的所有表，将它们 table share 中的 MHNSW_Share 的 start 置为空，强制后续操作重新读取 hnsw 的 
-entrypoint；将 node_cache 中所有的 FVectorNode 的 vec 置为空，强制从向量索引表中重新读取最新数据
-
+2. 操作事务涉及到的所有表，将它们 table share 中的 MHNSW_Share 的 start 置为空，强制后续操作重新读取 hnsw 的
+   entrypoint；将 node_cache 中所有的 FVectorNode 的 vec 置为空，强制从向量索引表中重新读取最新数据
 
 `MHNSW_Trx::do_rollback`
 
@@ -414,9 +416,7 @@ entrypoint；将 node_cache 中所有的 FVectorNode 的 vec 置为空，强制�
 
 `ha_rollback_trans` 还会调用 innodb 的回滚逻辑 `innobase_rollback` 完成主表和向量索引表的数据回滚。
 
-
 #### 隔离性
-
 
 如何支持处理写写冲突，读写冲突的？
 
@@ -428,7 +428,6 @@ entrypoint；将 node_cache 中所有的 FVectorNode 的 vec 置为空，强制�
 挂了以后的恢复流程，会不会丢数据？
 
 因为采用了 innodb 存储图结构，基于 innodb 的崩溃恢复流程，可以保证数据的安全。
-
 
 ## 参考资料
 

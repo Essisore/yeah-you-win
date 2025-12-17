@@ -1,0 +1,106 @@
+<!-- 阅读进度条和返回顶部按钮 -->
+<div
+  id="scroll-progress"
+  class="fixed left-0 right-0 top-0 z-50 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-blue-500 to-purple-500 transition-transform"
+  role="progressbar"
+  aria-label="阅读进度"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  aria-valuenow="0"
+>
+</div>
+
+<button
+  id="back-to-top"
+  class="pointer-events-none fixed bottom-6 right-6 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-blue-500 text-white opacity-0 shadow-lg transition-all duration-300 hover:scale-110 hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+  aria-label="返回顶部"
+  aria-hidden="true"
+  type="button"
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    class="h-5 w-5"
+    viewBox="0 0 20 20"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path
+      fill-rule="evenodd"
+      d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+      clip-rule="evenodd"></path>
+  </svg>
+</button>
+
+<script>
+  function initScrollFeatures() {
+    const progressBar = document.getElementById("scroll-progress");
+    const backToTopButton = document.getElementById("back-to-top");
+
+    if (!progressBar || !backToTopButton) return;
+
+    let ticking = false;
+
+    // 更新进度条
+    function updateProgress() {
+      if (!progressBar) return;
+
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      const scrollTop = window.scrollY;
+      const maxScroll = documentHeight - windowHeight;
+      const scrollPercentage =
+        maxScroll > 0 ? Math.min((scrollTop / maxScroll) * 100, 100) : 0;
+
+      progressBar.style.transform = `scaleX(${scrollPercentage / 100})`;
+      progressBar.setAttribute(
+        "aria-valuenow",
+        Math.round(scrollPercentage).toString(),
+      );
+    }
+
+    // 显示/隐藏返回顶部按钮
+    function toggleBackToTop() {
+      if (!backToTopButton) return;
+
+      const shouldShow = window.scrollY > 300;
+      backToTopButton.style.opacity = shouldShow ? "1" : "0";
+      backToTopButton.style.pointerEvents = shouldShow ? "auto" : "none";
+      backToTopButton.setAttribute(
+        "aria-hidden",
+        shouldShow ? "false" : "true",
+      );
+    }
+
+    // 滚动事件监听（使用 RAF 优化性能）
+    function onScroll() {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          updateProgress();
+          toggleBackToTop();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // 返回顶部点击事件
+    backToTopButton.addEventListener("click", () => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    });
+
+    // 初始化
+    updateProgress();
+    toggleBackToTop();
+  }
+
+  // 初始化
+  initScrollFeatures();
+
+  // Astro 页面切换后重新初始化
+  document.addEventListener("astro:page-load", initScrollFeatures);
+</script>

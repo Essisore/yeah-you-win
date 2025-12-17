@@ -1,19 +1,35 @@
 ---
-import { EMAIL } from "../consts";
+import { AUTHOR } from "../consts";
 import ThemeToggle from "./ThemeToggle.astro";
 ---
 
-<header class="mb-6 flex items-center justify-between" transition:name="header">
-  <nav class="flex items-center gap-4">
-    <a href="/"> Home </a>
-    <a href="/posts"> Posts </a>
-    <a href={`mailto:${EMAIL}`}>Email</a>
+<header
+  class="fixed left-0 right-0 top-0 z-50 bg-white/80 backdrop-blur-sm transition-shadow dark:bg-zinc-900/80"
+  transition:name="header"
+  transition:animate="fade"
+>
+  <nav
+    class="flex w-full items-center justify-between p-1.5"
+    aria-label="主导航"
+  >
+    <div class="flex items-center gap-3 text-xs">
+      <a href="/" aria-label="返回首页">Home</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 text-xs">
+        <a href="/posts" aria-label="查看所有文章">Posts</a>
+        <a href={`mailto:${AUTHOR.email}`} aria-label="发送邮件">Email</a>
+      </div>
+      <ThemeToggle />
+    </div>
   </nav>
-  <ThemeToggle />
 </header>
+
+<!-- 占位元素，防止内容被固定导航栏遮挡 -->
+<div class="h-7" aria-hidden="true"></div>
 
 <style>
   a {
-    @apply font-medium text-zinc-500 hover:text-zinc-900 hover:underline dark:hover:text-zinc-100;
+    @apply font-medium text-zinc-500 transition-colors hover:text-zinc-900 hover:underline dark:hover:text-zinc-100;
   }
 </style>

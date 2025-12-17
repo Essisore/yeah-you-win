@@ -5,86 +5,133 @@
 <script>
   function initCodeCopyButtons() {
     // 为所有代码块添加复制按钮
-    const codeBlocks = document.querySelectorAll('article pre');
-    
+    const codeBlocks = document.querySelectorAll("article pre");
+
     codeBlocks.forEach((pre) => {
       // 检查是否已经添加过按钮
-      if (pre.querySelector('.copy-button')) return;
-      
+      if (pre.querySelector(".copy-button")) return;
+
       // 创建包装器
-      const wrapper = document.createElement('div');
-      wrapper.className = 'code-block-wrapper';
+      const wrapper = document.createElement("div");
+      wrapper.className = "code-block-wrapper";
       pre.parentNode?.insertBefore(wrapper, pre);
       wrapper.appendChild(pre);
-      
+
+      // 检测语言
+      const codeElement = pre.querySelector("code");
+      const languageClass = codeElement?.className.match(/language-(\w+)/)?.[1];
+      const language = languageClass || "text";
+
+      // 创建语言标签
+      if (language !== "text") {
+        const languageTag = document.createElement("div");
+        languageTag.className = "language-tag";
+        languageTag.textContent = language.toUpperCase();
+        wrapper.appendChild(languageTag);
+      }
+
       // 创建复制按钮
-      const button = document.createElement('button');
-      button.className = 'copy-button';
-      button.setAttribute('aria-label', '复制代码');
+      const button = document.createElement("button");
+      button.className = "copy-button";
+      button.setAttribute("aria-label", "复制代码");
+      button.setAttribute("type", "button");
       button.innerHTML = `
-        <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
         </svg>
-        <svg class="check-icon hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="check-icon hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
         <span class="button-text">复制</span>
       `;
-      
+
       // 添加点击事件
-      button.addEventListener('click', async () => {
-        const code = pre.querySelector('code');
+      button.addEventListener("click", async () => {
+        const code = pre.querySelector("code");
         if (!code) return;
-        
-        const text = code.textContent || '';
-        
+
+        const text = code.textContent || "";
+
         try {
           await navigator.clipboard.writeText(text);
-          
+
           // 显示成功状态
-          const copyIcon = button.querySelector('.copy-icon');
-          const checkIcon = button.querySelector('.check-icon');
-          const buttonText = button.querySelector('.button-text');
-          
-          copyIcon?.classList.add('hidden');
-          checkIcon?.classList.remove('hidden');
-          if (buttonText) buttonText.textContent = '已复制';
-          button.classList.add('copied');
-          
+          const copyIcon = button.querySelector(".copy-icon");
+          const checkIcon = button.querySelector(".check-icon");
+          const buttonText = button.querySelector(".button-text");
+
+          copyIcon?.classList.add("hidden");
+          checkIcon?.classList.remove("hidden");
+          if (buttonText) buttonText.textContent = "已复制";
+          button.classList.add("copied");
+          button.setAttribute("aria-label", "代码已复制");
+
           // 2秒后恢复
           setTimeout(() => {
-            copyIcon?.classList.remove('hidden');
-            checkIcon?.classList.add('hidden');
-            if (buttonText) buttonText.textContent = '复制';
-            button.classList.remove('copied');
+            copyIcon?.classList.remove("hidden");
+            checkIcon?.classList.add("hidden");
+            if (buttonText) buttonText.textContent = "复制";
+            button.classList.remove("copied");
+            button.setAttribute("aria-label", "复制代码");
           }, 2000);
         } catch (err) {
-          console.error('复制失败:', err);
+          console.error("复制失败:", err);
+
+          // 显示错误提示
+          const buttonText = button.querySelector(".button-text");
+          if (buttonText) {
+            const originalText = buttonText.textContent;
+            buttonText.textContent = "复制失败";
+            setTimeout(() => {
+              if (buttonText) buttonText.textContent = originalText;
+            }, 2000);
+          }
         }
       });
-      
+
       wrapper.appendChild(button);
     });
   }
-  
+
   // 初始化
   initCodeCopyButtons();
-  
+
   // 支持 Astro 页面切换
-  document.addEventListener('astro:page-load', initCodeCopyButtons);
+  document.addEventListener("astro:page-load", initCodeCopyButtons);
 </script>
 
 <style is:global>
   .code-block-wrapper {
     position: relative;
-    margin: 1.5rem 0;
+    margin: 0.5rem 0;
   }
-  
+
   .code-block-wrapper pre {
     margin: 0;
   }
-  
+
+  .language-tag {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background-color: rgba(59, 130, 246, 0.15);
+    color: rgb(59, 130, 246);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    z-index: 1;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  :global(html.dark) .language-tag {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: rgb(96, 165, 250);
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+
   .copy-button {
     position: absolute;
     top: 0.5rem;
@@ -105,31 +152,31 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
-  
+
   .copy-button:hover {
     background-color: rgba(0, 0, 0, 0.12);
     color: rgba(0, 0, 0, 0.8);
     border-color: rgba(0, 0, 0, 0.1);
   }
-  
+
   .copy-button:active {
     transform: scale(0.95);
   }
-  
+
   .copy-button.copied {
     background-color: rgba(34, 197, 94, 0.15);
     color: rgb(22, 163, 74);
     border-color: rgba(34, 197, 94, 0.3);
   }
-  
+
   .copy-button svg {
     flex-shrink: 0;
   }
-  
+
   .copy-button .button-text {
     white-space: nowrap;
   }
-  
+
   /* 暗色主题优化 */
   :global(html.dark) .copy-button {
     background-color: rgba(63, 63, 70, 0.6);
@@ -148,13 +195,13 @@
     color: rgb(74, 222, 128);
     border-color: rgba(34, 197, 94, 0.4);
   }
-  
+
   /* 响应式：小屏幕时隐藏文字 */
   @media (max-width: 640px) {
     .copy-button .button-text {
       display: none;
     }
-    
+
     .copy-button {
       padding: 0.375rem;
     }

@@ -1,0 +1,88 @@
+<!-- 标题锚点链接复制功能 -->
+<script>
+  function initHeadingLinks() {
+    const headings = document.querySelectorAll(
+      "article h1[id], article h2[id], article h3[id], article h4[id], article h5[id], article h6[id]",
+    );
+
+    headings.forEach((heading) => {
+      const headingElement = heading as HTMLElement;
+      headingElement.style.cursor = "pointer";
+      headingElement.setAttribute("role", "button");
+      headingElement.setAttribute("tabindex", "0");
+      headingElement.setAttribute(
+        "aria-label",
+        `复制链接: ${heading.textContent}`,
+      );
+
+      const handleClick = async () => {
+        const id = heading.getAttribute("id");
+        if (!id) return;
+
+        const url = `${window.location.origin}${window.location.pathname}#${id}`;
+
+        try {
+          await navigator.clipboard.writeText(url);
+
+          // 创建提示
+          showToast("链接已复制！", "success");
+
+          // 更新 URL（不触发页面滚动）
+          window.history.pushState({}, "", url);
+        } catch (err) {
+          console.error("复制失败:", err);
+          showToast("复制失败，请手动复制", "error");
+        }
+      };
+
+      heading.addEventListener("click", handleClick);
+
+      // 键盘可访问性
+      heading.addEventListener("keydown", ((e: KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }) as EventListener);
+    });
+  }
+
+  // 显示提示消息的辅助函数
+  function showToast(message: string, type: "success" | "error" = "success") {
+    const toast = document.createElement("div");
+    toast.textContent = message;
+    toast.className = `fixed top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-sm font-medium z-50 pointer-events-none ${
+      type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
+    }`;
+    toast.setAttribute("role", "alert");
+    toast.setAttribute("aria-live", "polite");
+    toast.style.animation = "fade-in 0.3s ease";
+    document.body.appendChild(toast);
+
+    // 2秒后移除提示
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transition = "opacity 0.3s ease";
+      setTimeout(() => toast.remove(), 300);
+    }, 2000);
+  }
+
+  // 初始化
+  initHeadingLinks();
+
+  // Astro 页面切换后重新初始化
+  document.addEventListener("astro:page-load", initHeadingLinks);
+</script>
+
+<style is:global>
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -10px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+</style>

@@ -3,16 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  @font-face {
-    font-family: "Geist";
-    src: url("/fonts/geist-variable.woff2") format("woff2");
-    font-display: swap;
-  }
-  @font-face {
-    font-family: "Geist Mono";
-    src: url("/fonts/geist-mono-variable.woff2") format("woff2");
-    font-display: swap;
-  }
+  /* 代码高亮主题切换 */
   html.dark .astro-code,
   html.dark .astro-code span {
     color: var(--shiki-dark) !important;
@@ -21,72 +12,175 @@
     font-weight: var(--shiki-dark-font-weight) !important;
     text-decoration: var(--shiki-dark-text-decoration) !important;
   }
+
+  /* 平滑滚动 */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* 自定义滚动条 */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-zinc-100 dark:bg-zinc-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-zinc-400 dark:bg-zinc-600;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-zinc-500 dark:bg-zinc-500;
+  }
 }
 
 @layer components {
-  article {
+  /* 文章样式 */
+  article,
+  .prose-custom {
+    @apply text-zinc-900 dark:text-zinc-200;
+
     p {
-      @apply my-3 leading-normal;
+      @apply my-2 text-sm leading-relaxed;
     }
-    h1 {
-      @apply mb-3 mt-6 text-xl font-medium dark:text-white;
-    }
-    h2 {
-      @apply mb-3 mt-5 text-lg font-medium dark:text-white;
-    }
+
+    h1,
+    h2,
     h3,
     h4,
     h5,
     h6 {
-      @apply mb-2 mt-4 font-medium dark:text-white;
+      @apply scroll-mt-20;
     }
+
+    h1 {
+      @apply mb-2 mt-4 text-lg font-medium transition-all duration-200 dark:text-white;
+      position: relative;
+      padding-left: 0;
+    }
+    h1:hover {
+      padding-left: 1.5rem;
+    }
+    h1:hover::before {
+      content: "# ";
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+      font-weight: 500;
+    }
+
+    h2 {
+      @apply mb-2 mt-4 text-base font-medium transition-all duration-200 dark:text-white;
+      position: relative;
+      padding-left: 0;
+    }
+    h2:hover {
+      padding-left: 2rem;
+    }
+    h2:hover::before {
+      content: "## ";
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+      font-weight: 500;
+    }
+
+    h3 {
+      @apply mb-1.5 mt-3 text-sm font-medium transition-all duration-200 dark:text-white;
+      position: relative;
+      padding-left: 0;
+    }
+    h3:hover {
+      padding-left: 2.5rem;
+    }
+    h3:hover::before {
+      content: "### ";
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+      font-weight: 500;
+    }
+
+    h4,
+    h5,
+    h6 {
+      @apply mb-1.5 mt-3 text-sm font-medium transition-all duration-200 dark:text-white;
+    }
+
     :not(pre) > code {
-      @apply whitespace-nowrap rounded border bg-zinc-200/50 px-1 py-0.5 font-mono text-sm font-medium text-black dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-white;
+      @apply whitespace-nowrap rounded border bg-zinc-200/50 px-1 py-0.5 font-mono text-xs font-medium text-black dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-white;
     }
+
     pre:has(code) {
-      @apply my-3 max-h-[600px] overflow-auto rounded-lg border p-3 font-mono text-sm font-medium dark:border-zinc-700;
+      @apply my-2 max-h-[600px] overflow-auto rounded-lg border p-2.5 font-mono text-xs font-medium dark:border-zinc-700;
+      position: relative;
     }
+
     img {
-      @apply mx-auto my-3 max-h-[400px] max-w-full rounded-lg border dark:border-zinc-700;
+      @apply mx-auto my-2 max-w-full rounded-lg border transition-all duration-200 dark:border-zinc-700;
       display: block;
       object-fit: contain;
+      max-height: 500px;
     }
+    img:hover {
+      transform: scale(1.02);
+      box-shadow:
+        0 10px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
     video {
-      @apply my-3 rounded-lg border dark:border-zinc-700;
+      @apply my-2 rounded-lg border dark:border-zinc-700;
     }
+
     blockquote {
-      @apply my-3 border-l-2 pl-4;
+      @apply my-2 border-l-4 border-blue-500 bg-blue-50/50 py-2 pl-3 pr-2 text-sm italic dark:border-blue-400 dark:bg-blue-950/20;
     }
+
     a {
-      @apply text-blue-500 underline;
+      @apply text-blue-500 underline decoration-blue-300 underline-offset-2 transition-colors hover:text-blue-600 hover:decoration-blue-500 dark:decoration-blue-700 dark:hover:decoration-blue-400;
     }
+    a[href^="http"]::after,
+    a[href^="https://"]::after
+    {
+      content: " ↗";
+      font-size: 0.7em;
+      opacity: 0.6;
+    }
+
     /* KaTeX math formulas */
     .katex-display {
-      @apply my-3 overflow-x-auto overflow-y-hidden;
+      @apply my-2 overflow-x-auto overflow-y-hidden;
     }
     .katex {
-      @apply text-base;
+      @apply text-sm;
     }
+
     table {
-      @apply my-3 w-full table-auto border-collapse text-sm;
-      th {
-        @apply border-b p-3 text-left font-medium dark:border-zinc-700;
-      }
-      td {
-        @apply border-b bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800;
-      }
+      @apply my-2 w-full table-auto border-collapse text-xs;
     }
+    th {
+      @apply border-b p-2 text-left font-medium dark:border-zinc-700;
+    }
+    td {
+      @apply border-b bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-800;
+    }
+
     ol {
-      @apply my-3 ml-6 list-outside list-decimal space-y-0.5 [&_ol]:pl-5 [&_ul]:pl-5;
+      @apply my-2 ml-5 list-outside list-decimal space-y-0 text-sm [&_ol]:pl-4 [&_ul]:pl-4;
     }
     ul {
-      @apply my-3 ml-6 list-outside list-disc space-y-0.5 [&_ol]:pl-5 [&_ul]:pl-5;
+      @apply my-2 ml-5 list-outside list-disc space-y-0 text-sm [&_ol]:pl-4 [&_ul]:pl-4;
     }
+
     kbd {
       @apply rounded border border-b-2 bg-zinc-100 px-1 py-0.5 font-mono text-xs font-medium text-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-white;
     }
+
     mark {
-      @apply dark:bg-yellow-500/50 dark:text-white;
+      @apply bg-yellow-200 dark:bg-yellow-500/50 dark:text-white;
     }
   }
 }

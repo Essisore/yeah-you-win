@@ -1,8 +1,20 @@
 <!-- 图片查看器组件 -->
-<div id="image-viewer" class="image-viewer hidden">
-  <div class="image-viewer-backdrop"></div>
+<div
+  id="image-viewer"
+  class="image-viewer hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-label="图片查看器"
+  aria-hidden="true"
+>
+  <div class="image-viewer-backdrop" aria-hidden="true"></div>
   <div class="image-viewer-content">
-    <button id="close-viewer" class="close-button" aria-label="关闭">
+    <button
+      id="close-viewer"
+      class="close-button"
+      aria-label="关闭图片查看器"
+      type="button"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
@@ -12,12 +24,13 @@
         stroke-linecap="round"
         stroke-linejoin="round"
         class="size-6"
+        aria-hidden="true"
       >
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
       </svg>
     </button>
-    <img id="viewer-image" src="" alt="" />
+    <img id="viewer-image" src="" alt="" loading="lazy" />
   </div>
 </div>
 
@@ -70,11 +83,18 @@
     color: white;
     cursor: pointer;
     padding: 8px;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
+    border-radius: 4px;
   }
 
   .close-button:hover {
     opacity: 0.7;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .close-button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
   }
 
   #viewer-image {
@@ -87,13 +107,15 @@
 </style>
 
 <script>
-  const setupImageViewer = () => {
+  function setupImageViewer() {
     const viewer = document.getElementById("image-viewer");
     const viewerImage = document.getElementById(
       "viewer-image",
-    ) as HTMLImageElement;
+    ) as HTMLImageElement | null;
     const closeButton = document.getElementById("close-viewer");
     const backdrop = document.querySelector(".image-viewer-backdrop");
+
+    if (!viewer || !viewerImage) return;
 
     // 为文章中的所有图片添加点击事件
     const articleImages = document.querySelectorAll("article img");
@@ -101,30 +123,48 @@
     articleImages.forEach((img) => {
       const imageElement = img as HTMLImageElement;
       imageElement.style.cursor = "pointer";
-      imageElement.addEventListener("click", () => {
-        if (viewer && viewerImage) {
-          viewerImage.src = imageElement.src;
-          viewerImage.alt = imageElement.alt;
-          viewer.classList.remove("hidden");
-          // 使用 setTimeout 确保过渡动画生效
-          setTimeout(() => {
-            viewer.classList.add("show");
-          }, 10);
-          // 防止页面滚动
-          document.body.style.overflow = "hidden";
+      imageElement.setAttribute("role", "button");
+      imageElement.setAttribute("tabindex", "0");
+      imageElement.setAttribute(
+        "aria-label",
+        `查看大图: ${imageElement.alt || "图片"}`,
+      );
+
+      const openViewer = () => {
+        viewerImage.src = imageElement.src;
+        viewerImage.alt = imageElement.alt;
+        viewer.classList.remove("hidden");
+        viewer.setAttribute("aria-hidden", "false");
+        // 使用 setTimeout 确保过渡动画生效
+        setTimeout(() => {
+          viewer.classList.add("show");
+        }, 10);
+        // 防止页面滚动
+        document.body.style.overflow = "hidden";
+        // 设置焦点到关闭按钮
+        closeButton?.focus();
+      };
+
+      imageElement.addEventListener("click", openViewer);
+
+      // 键盘可访问性
+      imageElement.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openViewer();
         }
       });
     });
 
     // 关闭查看器的函数
     const closeViewer = () => {
-      if (viewer) {
-        viewer.classList.remove("show");
-        setTimeout(() => {
-          viewer.classList.add("hidden");
-          document.body.style.overflow = "";
-        }, 300);
-      }
+      viewer.classList.remove("show");
+      viewer.setAttribute("aria-hidden", "true");
+      setTimeout(() => {
+        viewer.classList.add("hidden");
+        document.body.style.overflow = "";
+        viewerImage.src = "";
+      }, 300);
     };
 
     // 点击关闭按钮
@@ -134,16 +174,13 @@
     backdrop?.addEventListener("click", closeViewer);
 
     // 按 ESC 键关闭
-    document.addEventListener("keydown", (e) => {
-      if (
-        e.key === "Escape" &&
-        viewer &&
-        !viewer.classList.contains("hidden")
-      ) {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !viewer.classList.contains("hidden")) {
         closeViewer();
       }
-    });
-  };
+    };
+    document.addEventListener("keydown", handleKeydown);
+  }
 
   // 初始化
   setupImageViewer();
