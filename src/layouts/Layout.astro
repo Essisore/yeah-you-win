@@ -9,6 +9,7 @@ interface Props {
   description: string;
   image?: string;
   className?: string;
+  containerClass?: string;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -18,6 +19,7 @@ const {
   description,
   image = "/static/blog-placeholder.png",
   className,
+  containerClass,
 } = Astro.props;
 ---
 
@@ -80,7 +82,7 @@ const {
   <body
     class="font-sans text-zinc-900 antialiased transition-colors dark:bg-zinc-900 dark:text-zinc-200"
   >
-    <div class={cn("max-w-2xl mx-auto p-4", className)}>
+    <div class={cn("mx-auto p-4", containerClass ?? "max-w-2xl", className)}>
       <Header />
       <slot />
     </div>
