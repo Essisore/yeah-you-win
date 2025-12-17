@@ -4,11 +4,11 @@ description: "vector index in mariadb"
 date: "Dec 03 2025"
 ---
 
-本文着重于源码实现，基于 mariadb 11.8 版本，并从代码中找寻这些问题的答案。
+本文着重于源码实现，基于 mariadb 11.8 版本。
 
 ## 概述
 
-宋昭已经在 [MariaDB vector index 实现分析](https://zhuanlan.zhihu.com/p/1904733400474054912) 用通俗易懂的语言描述了 mariadb 的 vector index 实现原理，以及性能分析。核心如下图：
+[MariaDB vector index 实现分析](https://zhuanlan.zhihu.com/p/1904733400474054912) 用通俗易懂的语言描述了 mariadb 的 vector index 实现原理，以及性能分析。核心如下图：
 
 ![mariadb 向量索引概览](/assets/images/maria-vector-index-glance.jpg)
 
@@ -25,7 +25,7 @@ date: "Dec 03 2025"
 
 ```sql
 CREATE TABLE `用户表表名 + #i# + vector列位置` (
-  layer tinyint not null, -- 层数
+  layer tinyint not null, -- （最高）层数
   tref varbinary(%u), -- 用户表的主键值，用于内部表记录与对应用户表记录的关联
   vec blob not null, -- 向量数据，与主表存储方式不同
   neighbors blob not null, -- 该节点在每一层的邻居，存的是 DB_ROW_ID
@@ -45,20 +45,9 @@ hnsw 是比较高效的向量索引数据结构，也是目前应用最广泛的
 1. 纯内存的数据结构，必须全部加载到内存中才能使用
 2. 随机读，访问某个节点的邻居是随机读，是实现磁盘算法的一大挑战
 3. 写放大，当插入向量时，不仅要修改该节点，还要更新其邻居节点的连接信息。这些节点可能分散在磁盘各处，导致大量的小规模随机写入，远比顺序写入效率低
-4. 没有事务能力
+4. 事务能力缺失
 
 ## mariadb 实现
-
-### 参数
-
-mariadb 向量索引实现相关参数：
-
-| 参数                     | 默认值       | 范围                | 说明           |
-|------------------------|-----------|-------------------|--------------|
-| mhnsw_max_cache_size   | 16MB      | [1MB, SIZE_T_MAX] | 单个索引缓存上限     |
-| mhnsw_ef_search        | 20        | [1, 10000]        | 查询时探索的候选节点数  |
-| mhnsw_default_m        | 6         | [3, 200]          | 创建索引时的默认 M 值 |
-| mhnsw_default_distance | EUCLIDEAN | EUCLIDEAN/COSINE  | 默认距离度量       |
 
 ### 数据类型
 
@@ -135,6 +124,16 @@ ha_create_table {
 }
 ```
 
+#### 索引参数
+mariadb 向量索引实现相关参数：
+
+| 参数                     | 默认值       | 范围                | 说明           |
+|------------------------|-----------|-------------------|--------------|
+| mhnsw_max_cache_size   | 16MB      | [1MB, SIZE_T_MAX] | 单个索引缓存上限     |
+| mhnsw_ef_search        | 20        | [1, 10000]        | 查询时探索的候选节点数  |
+| mhnsw_default_m        | 6         | [3, 200]          | 创建索引时的默认 M 值 |
+| mhnsw_default_distance | EUCLIDEAN | EUCLIDEAN/COSINE  | 默认距离度量       |
+
 ### 插入
 
 往包含向量索引的表中插入数据时，会自动构建 hnsw 索引。
@@ -165,9 +164,12 @@ mysql_insert
 ```
 
 1. 调用 `open_hlindexes_for_write`，对向量索引表进行开表：先调用 `hlindex_open` 开表，然后调用 `hlindex_lock` 锁表
+
 2. 在 `ha_write_row` 中，完成了对主表的写入（`write_row`）之后，写 binlog 之前（`binlog_log_row`），调用 `hlindexes_on_insert` 往向量索引表插入数据
 
 构建 hnsw 的入口：`mhnsw_insert`，本质上还是构建 hnsw 结构，使用的算法和论文中是一致的，此文中不再赘述。
+
+#### FVectorNode
 
 作者的设计思想是：将向量索引表视为 graph，将表中的一条数据视为 graph 的一个 node。在代码实现中，`FVectorNode` 就承担了这个角色：既表示一个节点，同时也表示表中的一条数据。
 
@@ -271,10 +273,12 @@ ha_update_row -> hlindexes_on_update --> mhnsw_invalidate
 
 Q：那么什么时候真正地删除？
 
-TODO
+TODO（P.S. 目前的理解是不删除）
 
 
 ### 查询
+
+查询示例：
 
 ```sql
 SELECT p.name, p.description
@@ -284,7 +288,17 @@ ORDER BY VEC_DISTANCE_EUCLIDEAN(p.embedding,
 LIMIT 10
 ```
 
-查询流程：
+#### 优化器
+
+我的理解（可能不正确）：现在是将向量索引当作普通的索引参与代价模型的评估，选出最优的执行计划。
+
+如上面的 select 语句，如果去掉了 limit 子句，就不会选用向量索引。
+
+这是因为在 `test_if_cheaper_ordering` 函数中，会遍历所有的 order 子句能够使用的索引，并比较使用索引和 file sort 的代价，如果使用索引的代价更低，则会使用索引。
+这个过程中要求索引是聚簇索引，或者有 limit 子句。而计算代价（`cost_for_index_read`）流程并没针对 hlindex 做什么特殊处理。
+
+
+#### 查询流程
 
 ```c++
 sub_select --> join_read_first -> hlindex_read_first -> mhnsw_read_first
@@ -303,23 +317,8 @@ sub_select --> join_read_first -> hlindex_read_first -> mhnsw_read_first
 node_cache 是一个 hash 表，key 是向量的 id，value 是 `FVectorNode` 。每次需要读取向量索引表时（`get_node`），
 都会先从 `node_cache` 中找一下，找不到会新建一个 FVectorNode 放到 node_cache 中。
 
-
-下面是一些问题：
-
-Q： 什么时候会选用向量索引？
-
-我的理解（可能不正确）：现在是将向量索引当作普通的索引参与代价模型的评估，选出最优的执行计划。
-
-如上面的 select 语句，如果去掉了 limit 子句，就不会选用向量索引。
-
-这是因为在 `test_if_cheaper_ordering` 函数中，会遍历所有的 order 子句能够使用的索引，并比较使用索引和 file sort 的代价，如果使用索引的代价更低，则会使用索引。
-这个过程中要求索引是聚簇索引，或者有 limit 子句。而计算代价（`cost_for_index_read`）流程并没针对 hlindex 做什么特殊处理。
-
-Q：如何解决随机读？
-
-我的理解是：mariadb 并没有很好的解决随机读的问题，或者说没有管这个问题。使用了缓存机制，
-包括 mhnsw 的 node_cache 和 innodb 的 buffer pool 机制来缓存数据，避免后续的磁盘 io。
-但是，其实并没有从根本上解决问题，当缓存满了以后，性能出现波动。
+mariadb 并没有很好的解决随机读的问题。使用了缓存机制，
+包括 mhnsw 的 node_cache 和 innodb 的 buffer pool 机制来缓存数据，避免后续的磁盘 io。但是，其实并没有从根本上解决问题，当缓存满了以后，性能出现波动。
 
 ### 事务分析
 
