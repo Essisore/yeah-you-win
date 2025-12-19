@@ -158,14 +158,47 @@
       @apply text-sm;
     }
 
+    /* 表格容器：移动端支持横向滚动 */
     table {
       @apply my-2 w-full table-auto border-collapse text-xs;
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
     }
+    
+    /* 表格本身保持布局 */
+    thead,
+    tbody,
+    tr {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+    
     th {
       @apply border-b p-2 text-left font-medium dark:border-zinc-700;
+      white-space: normal;
+      word-break: break-word;
     }
+    
     td {
       @apply border-b bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-800;
+      white-space: normal;
+      word-break: break-word;
+    }
+    
+    /* 移动端优化 */
+    @media (max-width: 640px) {
+      table {
+        font-size: 0.7rem;
+      }
+      
+      th,
+      td {
+        @apply px-1.5 py-1.5;
+        min-width: 80px;
+      }
     }
 
     ol {
