@@ -26,44 +26,47 @@ const pageTitle = `文章列表 - ${SITE_TITLE}`;
   containerClass="max-w-7xl"
   className="!p-0"
 >
-  <main class="flex justify-center lg:my-6">
+  <main class="fixed bottom-0 left-0 right-0 top-7 flex items-center justify-center p-4 lg:p-6">
     <article
-      class="w-full max-w-[210mm] bg-white shadow-2xl dark:bg-zinc-900"
-      style="min-height: 297mm;"
+      class="flex h-full w-full max-w-4xl flex-col bg-white shadow-2xl dark:bg-zinc-900"
     >
-      <div class="h-full overflow-auto p-6">
-        <header class="mb-6">
+      <div class="flex h-full flex-col p-6">
+        <header class="flex-shrink-0 mb-6">
           <h1 class="text-xl font-semibold">文章列表</h1>
           <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             第 1 / {totalPages} 页 · 共 {sortedPosts.length} 篇文章
           </p>
         </header>
 
-        {
-          posts.length === 0 ? (
-            <p class="text-sm text-zinc-500">暂无文章</p>
-          ) : (
-            <ul class="m-0 flex list-none flex-col p-0 text-sm" role="list">
-              {posts.map((post) => (
-                <li class="m-0 list-none p-0">
-                  <a
-                    href={`/posts/${post.slug}`}
-                    class="group flex flex-col gap-1 py-2 no-underline transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800 sm:flex-row sm:justify-between sm:gap-2"
-                  >
-                    <span class="font-medium group-hover:text-blue-500">
-                      {post.data.title}
-                    </span>
-                    <span class="whitespace-nowrap font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                      {formatDate(post.data.date)}
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )
-        }
+        <!-- 文章列表区域 - 可滚动但隐藏滚动条 -->
+        <div class="flex-1 overflow-y-auto min-h-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {
+            posts.length === 0 ? (
+              <p class="text-sm text-zinc-500">暂无文章</p>
+            ) : (
+              <ul class="m-0 flex list-none flex-col p-0 text-sm" role="list">
+                {posts.map((post) => (
+                  <li class="m-0 list-none p-0">
+                    <a
+                      href={`/posts/${post.slug}`}
+                      class="group flex flex-col gap-1 py-2 no-underline transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800 sm:flex-row sm:justify-between sm:gap-2"
+                    >
+                      <span class="font-medium group-hover:text-blue-500">
+                        {post.data.title}
+                      </span>
+                      <span class="whitespace-nowrap font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                        {formatDate(post.data.date)}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        </div>
 
-        <div class="mt-8 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-700">
+        <!-- 分页控件 -->
+        <div class="flex-shrink-0 mt-6 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-700">
           <div>
             <!-- 第一页没有上一页 -->
           </div>
@@ -91,7 +94,11 @@ const pageTitle = `文章列表 - ${SITE_TITLE}`;
   </main>
 </Layout>
 
-<style>
+<style is:global>
+  /* 禁用 body 滚动，确保页面高度适配且不可滚动 */
+  body {
+    overflow: hidden !important;
+  }
   /* 覆盖全局 article a 的下划线样式 */
   article a {
     text-decoration: none;
